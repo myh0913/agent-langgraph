@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent 测试页面</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .main-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 16px;
+        align-items: start;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 20px;
+      }
+      h2 {
+        font-size: 15px;
+        color: #333;
+        margin-bottom: 12px;
+        border-left: 4px solid #4f46e5;
+        padding-left: 10px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: #4f46e5;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        background: #4f46e5;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn:hover {
+        background: #4338ca;
+      }
+      .btn:disabled {
+        background: #a5b4fc;
+        cursor: not-allowed;
+      }
+      .btn-danger {
+        background: #ef4444;
+      }
+      .btn-danger:hover {
+        background: #dc2626;
+      }
+      .btn-secondary {
+        background: #6b7280;
+      }
+      .btn-secondary:hover {
+        background: #4b5563;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .flex-1 {
+        flex: 1;
+      }
+
+      .msg {
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .msg.user {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .msg.agent {
+        background: #f3f4f6;
+        color: #1f2937;
+      }
+      .msg.api {
+        background: #fef3c7;
+        color: #92400e;
+        font-size: 13px;
+      }
+
+      #history {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #history:empty::before {
+        content: "发送消息开始测试...";
+        color: #aaa;
+        font-size: 13px;
+        text-align: center;
+        padding: 30px;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #4f46e5;
+        margin-bottom: 8px;
+      }
+
+      pre {
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin-top: 10px;
+      }
+      .response-box {
+        margin-top: 10px;
+      }
+
+      .left-col {
+        min-width: 0;
+      }
+      .right-col {
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+      }
+      .ctx-bar {
+        height: 6px;
+        background: #e5e7ff;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .ctx-bar-fill {
+        height: 100%;
+        background: #4f46e5;
+        border-radius: 3px;
+        transition: width 0.3s;
+      }
+      .ctx-bar-fill.warn {
+        background: #f59e0b;
+      }
+      .ctx-bar-fill.danger {
+        background: #ef4444;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🤖 Agent 接口测试</h1>
+
+      <div class="main-layout">
+        <div class="left-col">
+          <!-- 通用配置 -->
+          <div class="card">
+            <div class="grid-2">
+              <div>
+                <label>API 地址</label>
+                <input id="apiBase" value="http://localhost:8008" />
+              </div>
+              <div>
+                <label>User ID</label>
+                <input id="userId" value="test_user" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 消息对话 -->
+          <div class="card">
+            <h2>💬 消息对话</h2>
+            <div class="grid-2">
+              <div>
+                <label>Session ID（可留空，自动创建）</label>
+                <input id="sessionId" placeholder="留空则创建新会话" />
+              </div>
+              <div>
+                <label>发送消息</label>
+                <input id="messageInput" placeholder="输入消息，如：你好" />
+              </div>
+            </div>
+            <div class="row" style="margin-top: 12px">
+              <button class="btn" id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+            <div id="history"></div>
+          </div>
+
+          <!-- 会话管理 -->
+          <div class="card">
+            <h2>📋 会话管理</h2>
+            <div class="row">
+              <div class="flex-1">
+                <label>Session ID（查看/删除用）</label>
+                <input id="delSessionId" placeholder="输入 Session ID" />
+              </div>
+              <button class="btn" onclick="getHistory()">查看历史</button>
+              <button class="btn btn-danger" onclick="deleteSession()">删除会话</button>
+            </div>
+            <div class="row" style="margin-top: 12px">
+              <button class="btn btn-secondary" onclick="listSessions()">列出所有会话</button>
+            </div>
+            <div id="sessionResult" class="response-box"></div>
+          </div>
+
+          <!-- 定时任务 -->
+          <div class="card">
+            <h2>⏰ 定时任务</h2>
+            <div class="row">
+              <button class="btn" onclick="listTasks()">列出任务</button>
+              <button class="btn btn-secondary" onclick="createTask()">创建测试任务</button>
+            </div>
+            <div id="taskResult" class="response-box"></div>
+          </div>
+
+          <!-- 健康检查 -->
+          <div class="card">
+            <h2>❤ 健康检查</h2>
+            <div class="row">
+              <button class="btn" onclick="healthCheck()">检查</button>
+              <button class="btn btn-secondary" onclick="rootInfo()">根路径信息</button>
+            </div>
+            <div id="healthResult" class="response-box"></div>
+          </div>
+
+          <!-- 知识库 -->
+          <div class="card">
+            <h2>📚 知识库 - 导入</h2>
+
+            <div class="section-title">文本导入</div>
+            <textarea id="kbText" placeholder="输入要导入的知识文本..." style="margin-bottom: 8px; min-height: 60px;"></textarea>
+            <div class="grid-2" style="margin-bottom: 8px;">
+              <input id="kbTextTitle" placeholder="标题（可选）" />
+              <input id="kbTextCategory" placeholder="分类（如：投资理财）" />
+            </div>
+            <input id="kbTextTags" placeholder="标签（逗号分隔，如：基金,股票）" style="margin-bottom: 8px;" />
+            <button class="btn" onclick="importKbText()" style="margin-bottom: 16px;">导入文本</button>
+
+            <div class="section-title">文件上传</div>
+            <input type="file" id="kbFile" accept=".md,.txt,.json" style="margin-bottom: 8px;" />
+            <div class="grid-2" style="margin-bottom: 8px;">
+              <input id="kbFileCategory" placeholder="分类" />
+              <input id="kbFileTags" placeholder="标签（逗号分隔）" />
+            </div>
+            <button class="btn" onclick="importKbFile()" style="margin-bottom: 16px;">上传文件</button>
+
+            <div class="section-title">API 抓取导入</div>
+            <input id="kbApiUrl" placeholder="API URL，如：https://api.example.com/content/1" style="margin-bottom: 8px;" />
+            <div class="grid-2" style="margin-bottom: 8px;">
+              <input id="kbApiMethod" value="GET" placeholder="GET 或 POST" />
+              <input id="kbApiJsonKey" placeholder="JSON 路径（如：data.content）" />
+            </div>
+            <input id="kbApiCategory" placeholder="分类" style="margin-bottom: 8px;" />
+            <button class="btn" onclick="importKbApi()">抓取并导入</button>
+
+            <div id="kbImportResult" class="response-box"></div>
+          </div>
+
+          <!-- 知识库搜索 -->
+          <div class="card">
+            <h2>🔍 知识库 - 搜索</h2>
+            <div class="row" style="margin-bottom: 12px;">
+              <input id="kbSearchQuery" class="flex-1" placeholder="搜索知识，如：如何选择基金" />
+              <input id="kbSearchTopK" type="number" value="5" style="width: 60px;" placeholder="条数" />
+              <button class="btn" onclick="searchKb()">搜索</button>
+            </div>
+            <div class="row" style="margin-bottom: 12px;">
+              <input id="kbSearchCategory" class="flex-1" placeholder="按分类过滤（可选）" />
+              <input id="kbSearchTags" class="flex-1" placeholder="按标签过滤（可选）" />
+            </div>
+            <div id="kbSearchResults"></div>
+          </div>
+
+          <!-- 知识库管理 -->
+          <div class="card">
+            <h2>⚙️ 知识库 - 管理</h2>
+            <div class="row" style="margin-bottom: 12px;">
+              <button class="btn" onclick="getKbStats()">查看统计</button>
+              <button class="btn btn-secondary" onclick="clearKb()" style="background:#f59e0b">清空知识库</button>
+            </div>
+            <div id="kbStatsResult"></div>
+          </div>
+        </div>
+
+        <!-- 右侧上下文信息 -->
+        <div class="right-col">
+          <div class="card" style="position: sticky; top: 20px">
+            <h2>🧠 上下文记忆</h2>
+            <div id="ctxStats" style="font-size: 13px; color: #666; margin-bottom: 12px">发送消息后查看详情...</div>
+            <div class="ctx-bar" id="ctxBar" style="display: none; margin-bottom: 12px">
+              <div class="ctx-bar-fill" id="ctxBarFill"></div>
+            </div>
+            <div id="ctxDetail" style="font-size: 12px; color: #888; line-height: 1.8"></div>
+            <div id="llmInputContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const apiBase = () => document.getElementById("apiBase").value.trim();
+      const userId = () => document.getElementById("userId").value.trim();
+      const sessionId = () => document.getElementById("sessionId").value.trim();
+      const delSessionId = () => document.getElementById("delSessionId").value.trim();
+
+      // ========== 通用 ==========
+
+      function showResult(boxId, data, isError = false) {
+        const box = document.getElementById(boxId);
+        box.innerHTML = `<pre style="background:${isError ? "#fef2f2;color:#991b1b" : "#f9fafb;color:#1f2937"}">${JSON.stringify(data, null, 2)}</pre>`;
+      }
+
+      async function apiFetch(url, options = {}) {
+        const resp = await fetch(url, {
+          headers: { "Content-Type": "application/json", ...options.headers },
+          ...options,
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw { resp, data };
+        return data;
+      }
+
+      // ========== 消息 ==========
+
+      let currentSessionId = "";
+
+      async function sendMessage() {
+        const btn = document.getElementById("sendBtn");
+        const msg = document.getElementById("messageInput").value.trim();
+        if (!msg) return alert("请输入消息");
+        if (!userId()) {
+          alert("请填写 User ID");
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "思考中...";
+        appendMsg("user", msg);
+
+        try {
+          const payload = { user_id: userId(), message: msg };
+          const sid = sessionId();
+          if (sid) payload.session_id = sid;
+
+          const data = await apiFetch(`${apiBase()}/api/ai/message`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+
+          currentSessionId = data.data?.session_id || "";
+          document.getElementById("sessionId").value = currentSessionId;
+          document.getElementById("delSessionId").value = currentSessionId;
+
+          // 更新右侧上下文面板
+          updateContextPanel(data.data?.context_info, data.data?.llm_input);
+
+          const lines = [
+            data.data?.response || data.response,
+            "",
+            "---",
+            `意图: ${data.data?.intent_type || ""}`,
+            `Session: ${currentSessionId}`,
+            `时间: ${data.data?.timestamp || ""}`,
+          ];
+          appendMsg("agent", lines.join("\n"));
+        } catch (e) {
+          appendMsg("agent", `❌ 错误 ${e.resp?.status || "请求失败"}：${JSON.stringify(e.data || e)}`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "发送";
+          document.getElementById("messageInput").value = "";
+          document.getElementById("messageInput").focus();
+        }
+      }
+
+      function appendMsg(role, text) {
+        const history = document.getElementById("history");
+        const div = document.createElement("div");
+        div.className = `msg ${role}`;
+        div.textContent = text;
+        history.appendChild(div);
+        history.scrollTop = history.scrollHeight;
+      }
+
+      function updateContextPanel(ctx, llmInput) {
+        const statsEl = document.getElementById("ctxStats");
+        const barEl = document.getElementById("ctxBar");
+        const fillEl = document.getElementById("ctxBarFill");
+        const detailEl = document.getElementById("ctxDetail");
+
+        if (!ctx) {
+          statsEl.innerHTML = "暂无上下文信息";
+          barEl.style.display = "none";
+          detailEl.innerHTML = "";
+          return;
+        }
+
+        const { compressed, original_count, current_count, token_limit, token_count } = ctx;
+
+        if (compressed) {
+          statsEl.innerHTML = `<span style="color:#ef4444;font-weight:600">⚠️ 已压缩</span> &nbsp;原始 ${original_count} 条 → ${current_count} 条`;
+          statsEl.style.color = "#ef4444";
+        } else {
+          statsEl.innerHTML = `<span style="color:#22c55e;font-weight:600">✓ 正常</span> &nbsp;${current_count} 条消息`;
+          statsEl.style.color = "#666";
+        }
+
+        barEl.style.display = "block";
+        const ratio = Math.min(current_count / 200, 1);
+        fillEl.style.width = ratio * 100 + "%";
+        fillEl.className = "ctx-bar-fill" + (ratio > 0.8 ? " danger" : ratio > 0.5 ? " warn" : "");
+
+        detailEl.innerHTML = `
+      <div>Token 阈值: <strong>${token_limit.toLocaleString()}</strong></div>
+      <div>LLM Token: <strong style="color:#4f46e5">${(token_count || 0).toLocaleString()}</strong></div>
+      <div>原始消息: <strong>${original_count}</strong> 条</div>
+      <div>当前消息: <strong>${current_count}</strong> 条</div>
+      <div>压缩状态: <strong>${compressed ? "是" : "否"}</strong></div>
+    `;
+
+        // 渲染发送给 LLM 的具体内容
+        renderLLMInput(llmInput);
+      }
+
+      function renderLLMInput(llmInput) {
+        const container = document.getElementById("llmInputContent");
+        if (!llmInput || !llmInput.messages || !container) return;
+
+        let html = '<div style="margin-top:10px;max-height:400px;overflow-y:auto;">';
+        llmInput.messages.forEach((msg, idx) => {
+          const role =
+            msg.role === "user"
+              ? "👤 user"
+              : msg.role === "assistant"
+                ? "🤖 assistant"
+                : msg.role === "system"
+                  ? "⚙️ system"
+                  : msg.role;
+          const content = msg.content || "";
+          const isSummary = msg.is_summary;
+          const bg = isSummary
+            ? "#fef3c7"
+            : msg.role === "user"
+              ? "#e0e7ff"
+              : msg.role === "assistant"
+                ? "#f3f4f6"
+                : "#f9fafb";
+          const shortContent = content.length > 300 ? content.substring(0, 300) + "..." : content;
+          html += `<div style="padding:8px 10px;background:${bg};border-radius:6px;margin-bottom:6px;font-size:12px;line-height:1.6;">
+        <div style="font-weight:600;color:#666;margin-bottom:4px;">${role} #${idx + 1}</div>
+        <div style="white-space:pre-wrap;word-break:break-all;">${escapeHtml(shortContent)}</div>
+      </div>`;
+        });
+        html += "</div>";
+        container.innerHTML = html;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // ========== 会话管理 ==========
+
+      async function getHistory() {
+        const sid = delSessionId() || currentSessionId;
+        if (!sid) return alert("请输入 Session ID");
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/history/${userId()}/${sid}`);
+          showResult("sessionResult", data);
+        } catch (e) {
+          showResult("sessionResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function deleteSession() {
+        const sid = delSessionId() || currentSessionId;
+        if (!sid) return alert("请输入 Session ID");
+        if (!confirm(`确定删除会话 ${sid}？`)) return;
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/session/${userId()}/${sid}`, { method: "DELETE" });
+          showResult("sessionResult", data);
+        } catch (e) {
+          showResult("sessionResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function listSessions() {
+        if (!userId()) return alert("请填写 User ID");
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/sessions/${userId()}`);
+          const sessions = data.data?.sessions || [];
+          let html = `<p style="color:#666;font-size:13px">共 ${sessions.length} 个会话：</p>`;
+          sessions.forEach((s) => {
+            html += `<div style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px">
+          <strong>${s.session_id}</strong><br>
+          创建: ${s.created_at} | 活跃: ${s.last_active}
+        </div>`;
+          });
+          document.getElementById("sessionResult").innerHTML = html;
+        } catch (e) {
+          showResult("sessionResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      // ========== 定时任务 ==========
+
+      async function listTasks() {
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/tasks`);
+          showResult("taskResult", data);
+        } catch (e) {
+          showResult("taskResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function createTask() {
+        const payload = {
+          name: "test_task_" + Date.now(),
+          cron: "*/5 * * * *",
+          payload: { message: "test" },
+        };
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/tasks`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          showResult("taskResult", data);
+        } catch (e) {
+          showResult("taskResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      // ========== 健康检查 ==========
+
+      async function healthCheck() {
+        try {
+          const data = await apiFetch(`${apiBase()}/health`);
+          showResult("healthResult", data);
+        } catch (e) {
+          showResult("healthResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function rootInfo() {
+        try {
+          const data = await apiFetch(`${apiBase()}/`);
+          showResult("healthResult", data);
+        } catch (e) {
+          showResult("healthResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      // 回车发送（Shift+回车换行）
+      document.getElementById("messageInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      // ========== 知识库 ==========
+
+      async function importKbText() {
+        const text = document.getElementById("kbText").value.trim();
+        const title = document.getElementById("kbTextTitle").value.trim();
+        const category = document.getElementById("kbTextCategory").value.trim();
+        const tagsStr = document.getElementById("kbTextTags").value.trim();
+        const tags = tagsStr ? tagsStr.split(",").map((t) => t.trim()).filter(Boolean) : [];
+
+        if (!text) return alert("请输入知识文本");
+
+        const payload = { text, title, category, tags };
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/knowledge/import/text`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          showResult("kbImportResult", data);
+          document.getElementById("kbText").value = "";
+        } catch (e) {
+          showResult("kbImportResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function importKbFile() {
+        const fileInput = document.getElementById("kbFile");
+        const file = fileInput.files[0];
+        if (!file) return alert("请选择文件");
+
+        const category = document.getElementById("kbFileCategory").value.trim();
+        const tagsStr = document.getElementById("kbFileTags").value.trim();
+
+        const formData = new FormData();
+        formData.append("file", file);
+        if (category) formData.append("category", category);
+        if (tagsStr) formData.append("tags", tagsStr);
+
+        try {
+          const resp = await fetch(`${apiBase()}/api/ai/knowledge/import/file`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await resp.json();
+          showResult("kbImportResult", data);
+          fileInput.value = "";
+        } catch (e) {
+          showResult("kbImportResult", { error: e.message }, true);
+        }
+      }
+
+      async function importKbApi() {
+        const url = document.getElementById("kbApiUrl").value.trim();
+        const method = document.getElementById("kbApiMethod").value.trim() || "GET";
+        const jsonKey = document.getElementById("kbApiJsonKey").value.trim();
+        const category = document.getElementById("kbApiCategory").value.trim();
+
+        if (!url) return alert("请输入 API URL");
+
+        const payload = { url, method, json_key: jsonKey || undefined, category };
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/knowledge/import/fetch`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          showResult("kbImportResult", data);
+        } catch (e) {
+          showResult("kbImportResult", e.data || { error: e.message }, true);
+        }
+      }
+
+      async function searchKb() {
+        const query = document.getElementById("kbSearchQuery").value.trim();
+        const topK = parseInt(document.getElementById("kbSearchTopK").value) || 5;
+        const category = document.getElementById("kbSearchCategory").value.trim();
+        const tagsStr = document.getElementById("kbSearchTags").value.trim();
+
+        if (!query) return alert("请输入搜索内容");
+
+        const params = new URLSearchParams({ query, top_k: topK });
+        if (category) params.append("category", category);
+        if (tagsStr) params.append("tags", tagsStr);
+
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/knowledge/search?${params}`);
+          renderSearchResults("kbSearchResults", data);
+        } catch (e) {
+          showResult("kbSearchResults", e.data || { error: e.message }, true);
+        }
+      }
+
+      function renderSearchResults(containerId, data) {
+        const container = document.getElementById(containerId);
+        const results = data.results || [];
+
+        if (!results.length) {
+          container.innerHTML = '<p style="color:#999;font-size:13px;text-align:center;padding:20px;">没有找到相关知识</p>';
+          return;
+        }
+
+        let html = `<p style="color:#666;font-size:13px;margin-bottom:10px;">找到 ${data.total || results.length} 条相关知识：</p>`;
+
+        results.forEach((r, i) => {
+          const score = r.score ? (r.score * 100).toFixed(1) + "%" : "N/A";
+          const tags = Array.isArray(r.tags) ? r.tags.join(", ") : (r.tags || "");
+          const content = r.content ? (r.content.length > 200 ? r.content.substring(0, 200) + "..." : r.content) : "";
+
+          html += `<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <strong style="color:#4f46e5;">${escapeHtml(r.title || "无标题")}</strong>
+              <span style="color:#22c55e;font-size:12px;">相关度: ${score}</span>
+            </div>
+            <div style="margin-bottom:6px;">
+              <span style="background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:6px;">${escapeHtml(r.category || "通用")}</span>
+              ${tags ? `<span style="color:#666;font-size:12px;">标签: ${escapeHtml(tags)}</span>` : ""}
+            </div>
+            <div style="color:#374151;line-height:1.6;">${escapeHtml(content)}</div>
+          </div>`;
+        });
+
+        container.innerHTML = html;
+      }
+
+      async function getKbStats() {
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/knowledge/stats`);
+          document.getElementById("kbStatsResult").innerHTML = `
+            <div style="font-size:13px;line-height:1.8;color:#374151;">
+              <div><strong>总知识块：</strong>${data.total_chunks || 0}</div>
+              <div><strong>Collection：</strong>${data.collection || ""}</div>
+              <div><strong>存储目录：</strong>${data.persist_dir || ""}</div>
+              <div><strong>向量模型：</strong>${data.config?.embedding_model || ""}（${data.config?.embedding_dim || 0}维）</div>
+              <div><strong>分块大小：</strong>${data.config?.chunk_size || 0} 字</div>
+            </div>
+          `;
+        } catch (e) {
+          document.getElementById("kbStatsResult").innerHTML = `<p style="color:#ef4444;font-size:13px;">获取失败：${JSON.stringify(e.data || e)}</p>`;
+        }
+      }
+
+      async function clearKb() {
+        if (!confirm("确定要清空全部知识库吗？此操作不可恢复！")) return;
+        try {
+          const data = await apiFetch(`${apiBase()}/api/ai/knowledge/clear`, { method: "DELETE" });
+          showResult("kbStatsResult", data);
+        } catch (e) {
+          showResult("kbStatsResult", e.data || { error: e.message }, true);
+        }
+      }
+    </script>
+  </body>
+</html>

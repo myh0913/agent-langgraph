@@ -1,0 +1,32 @@
+# Core Framework
+langgraph>=0.4.0
+langchain>=0.3.27,<2.0.0
+langchain-core>=0.4.0
+langchain-openai>=0.2.0
+
+# API Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.10.0
+
+# Database (会话存储)
+redis>=5.0.14
+
+# Scheduler (定时任务)
+apscheduler>=3.10.0
+
+# Environment
+python-dotenv>=1.0.0
+python-dateutil>=2.9.0
+
+# Utilities
+httpx>=0.28.0
+tiktoken>=0.7.0
+
+# ============ 知识库相关 ============
+# 向量数据库（嵌入式）
+chromadb>=0.4.22
+
+# 本地 Embedding 模型
+sentence-transformers>=3.3.0
+torch>=2.0.0
