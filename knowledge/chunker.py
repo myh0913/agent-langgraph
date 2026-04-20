@@ -2,9 +2,13 @@
 文本分块模块
 """
 import re
+import logging
 from typing import List, Dict, Any
 from pathlib import Path
 import json
+
+
+logger = logging.getLogger(__name__)
 
 
 class TextChunker:
@@ -14,7 +18,7 @@ class TextChunker:
         self,
         chunk_size: int = 500,
         chunk_overlap: int = 50,
-        min_chunk_length: int = 50
+        min_chunk_length: int = 10
     ):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -35,7 +39,9 @@ class TextChunker:
 
         result = []
         for i, chunk_content in enumerate(chunks):
-            if len(chunk_content.strip()) < self.min_chunk_length:
+            stripped = chunk_content.strip()
+            logger.debug(f"Chunk {i}: length={len(stripped)}, min={self.min_chunk_length}")
+            if len(stripped) < self.min_chunk_length:
                 continue
 
             chunk_id = self._generate_chunk_id(source, i)
@@ -157,7 +163,22 @@ class TextChunker:
     def chunk_file(self, file_path: str, encoding: str = "utf-8") -> List[Dict[str, Any]]:
         """从文件分块"""
         path = Path(file_path)
-        text = path.read_text(encoding=encoding, errors="ignore")
+
+        if not path.exists():
+            logger.error(f"文件不存在: {file_path}")
+            return []
+
+        try:
+            text = path.read_text(encoding=encoding, errors="ignore")
+        except Exception as e:
+            logger.error(f"读取文件失败 {file_path}: {e}")
+            return []
+
+        if not text or not text.strip():
+            logger.error(f"文件内容为空: {file_path}")
+            return []
+
+        logger.info(f"成功读取文件 {file_path}, 字符数: {len(text)}")
 
         metadata = {
             "file_name": path.name,

@@ -17,6 +17,9 @@ from knowledge.importers import (
 )
 from knowledge.manager import get_knowledge_manager
 from api.response import ApiResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/knowledge", tags=["知识库"])
 
@@ -98,6 +101,8 @@ async def import_file(
       -F "tags=基金,股票"
     ```
     """
+    logger.info(f"接收到文件上传: {file.filename}, 大小: {getattr(file, 'size', 'unknown')}")
+    
     # 验证文件类型
     allowed_exts = {".md", ".txt", ".json"}
     ext = Path(file.filename).suffix.lower()
@@ -113,10 +118,19 @@ async def import_file(
     temp_path = temp_dir / file.filename
 
     try:
+        # 读取文件内容
+        content = await file.read()
+        logger.info(f"文件大小: {len(content)} bytes")
+        
+        if not content:
+            return ApiResponse.error(message="文件内容为空", code=400)
+        
+        # 写入临时文件
         with temp_path.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
+            f.write(content)
+        
+        logger.info(f"文件已保存到: {temp_path}")
 
-        # 解析 tags
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
         importer = get_file_importer()

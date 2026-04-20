@@ -24,7 +24,7 @@ class KnowledgeSettings:
     # 分块配置
     CHUNK_SIZE = 500
     CHUNK_OVERLAP = 50
-    CHUNK_MIN_LENGTH = 50
+    CHUNK_MIN_LENGTH = 10  # 降低最小长度阈值，支持短内容
 
     # 检索配置
     SEARCH_TOP_K = 5
