@@ -210,12 +210,12 @@ async def list_tasks():
     """列出所有定时任务"""
     from tasks import TaskScheduler
     scheduler = TaskScheduler()
-    # 注意：这里需要全局的 scheduler 实例
-    return ApiResponse.success(data={"tasks": {}})
+    # TODO: 获取实际任务列表
+    return ApiResponse.success(data={"tasks": [], "message": "任务列表获取功能待实现"})
 
 
 @router.post("/tasks")
 async def create_task(task_data: Dict[str, Any]):
     """创建定时任务"""
     # TODO: 实现创建任务逻辑
-    return ApiResponse.success(message="任务创建成功")
+    return ApiResponse.success(message="任务创建功能待实现")

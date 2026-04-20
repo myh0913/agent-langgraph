@@ -1,6 +1,7 @@
 """
 知识库 API 接口
 提供 HTTP 接口用于导入和搜索知识
+统一使用 ApiResponse 封装
 """
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
@@ -15,6 +16,7 @@ from knowledge.importers import (
     get_remember_handler
 )
 from knowledge.manager import get_knowledge_manager
+from api.response import ApiResponse
 
 router = APIRouter(prefix="/knowledge", tags=["知识库"])
 
@@ -38,7 +40,7 @@ class ApiFetchRequest(BaseModel):
     category: Optional[str] = ""
     tags: Optional[List[str]] = []
     title: Optional[str] = ""
-    json_key: Optional[str] = None  # 如 "data.content"
+    json_key: Optional[str] = None
 
 
 class SearchRequest(BaseModel):
@@ -76,7 +78,7 @@ async def import_text(req: TextImportRequest):
         category=req.category,
         tags=req.tags or []
     )
-    return result
+    return ApiResponse.success(data=result)
 
 
 @router.post("/import/file")
@@ -100,9 +102,9 @@ async def import_file(
     allowed_exts = {".md", ".txt", ".json"}
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed_exts:
-        raise HTTPException(
-            status_code=400,
-            detail=f"不支持的文件类型: {ext}，支持的类型: {allowed_exts}"
+        return ApiResponse.error(
+            message=f"不支持的文件类型: {ext}，支持的类型: {allowed_exts}",
+            code=400
         )
 
     # 保存临时文件
@@ -123,7 +125,10 @@ async def import_file(
             category=category,
             tags=tag_list
         )
-        return result
+        return ApiResponse.success(data=result)
+
+    except Exception as e:
+        return ApiResponse.error(message=f"导入失败: {str(e)}", code=500)
 
     finally:
         # 删除临时文件
@@ -148,18 +153,21 @@ async def fetch_and_import(req: ApiFetchRequest):
       }'
     ```
     """
-    importer = get_api_importer()
-    result = importer.fetch_and_import(
-        url=req.url,
-        method=req.method,
-        params=req.params,
-        headers=req.headers,
-        category=req.category,
-        tags=req.tags or [],
-        title=req.title or "",
-        json_key=req.json_key
-    )
-    return result
+    try:
+        importer = get_api_importer()
+        result = importer.fetch_and_import(
+            url=req.url,
+            method=req.method,
+            params=req.params,
+            headers=req.headers,
+            category=req.category,
+            tags=req.tags or [],
+            title=req.title or "",
+            json_key=req.json_key
+        )
+        return ApiResponse.success(data=result)
+    except Exception as e:
+        return ApiResponse.error(message=f"抓取导入失败: {str(e)}", code=500)
 
 
 @router.post("/import/batch")
@@ -177,16 +185,19 @@ async def import_batch(
     curl -X POST "http://localhost:8008/api/ai/knowledge/import/batch?dir_path=./knowledge/sources&category=投资理财&recursive=true"
     ```
     """
-    importer = get_file_importer()
-    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    try:
+        importer = get_file_importer()
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
-    result = importer.import_batch(
-        dir_path=dir_path,
-        category=category,
-        tags=tag_list,
-        recursive=recursive
-    )
-    return result
+        result = importer.import_batch(
+            dir_path=dir_path,
+            category=category,
+            tags=tag_list,
+            recursive=recursive
+        )
+        return ApiResponse.success(data=result)
+    except Exception as e:
+        return ApiResponse.error(message=f"批量导入失败: {str(e)}", code=500)
 
 
 # ============ 查询接口 ============
@@ -207,24 +218,27 @@ async def search(
     curl "http://localhost:8008/api/ai/knowledge/search?query=如何选择基金&top_k=5&category=投资理财"
     ```
     """
-    manager = get_knowledge_manager()
+    try:
+        manager = get_knowledge_manager()
 
-    tag_list = None
-    if tags:
-        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        tag_list = None
+        if tags:
+            tag_list = [t.strip() for t in tags.split(",") if t.strip()]
 
-    results = manager.search(
-        query=query,
-        top_k=top_k,
-        category=category,
-        tags=tag_list
-    )
+        results = manager.search(
+            query=query,
+            top_k=top_k,
+            category=category,
+            tags=tag_list
+        )
 
-    return {
-        "total": len(results),
-        "query": query,
-        "results": results
-    }
+        return ApiResponse.success(data={
+            "total": len(results),
+            "query": query,
+            "results": results
+        })
+    except Exception as e:
+        return ApiResponse.error(message=f"搜索失败: {str(e)}", code=500)
 
 
 @router.get("/stats")
@@ -237,8 +251,12 @@ async def stats():
     curl http://localhost:8008/api/ai/knowledge/stats
     ```
     """
-    manager = get_knowledge_manager()
-    return manager.get_stats()
+    try:
+        manager = get_knowledge_manager()
+        stats_data = manager.get_stats()
+        return ApiResponse.success(data=stats_data)
+    except Exception as e:
+        return ApiResponse.error(message=f"获取统计失败: {str(e)}", code=500)
 
 
 @router.get("/chunk/{chunk_id}")
@@ -251,12 +269,10 @@ async def get_chunk(chunk_id: str):
     curl http://localhost:8008/api/ai/knowledge/chunk/chunk_xxx
     ```
     """
-    manager = get_knowledge_manager()
-    results = manager.search(query="", top_k=1)
     # 注：ChromaDB 不支持按 ID 查询，此接口暂不支持
-    raise HTTPException(
-        status_code=501,
-        detail="ChromaDB 不支持按 ID 查询，请使用 /search 接口搜索"
+    return ApiResponse.error(
+        message="ChromaDB 不支持按 ID 查询，请使用 /search 接口搜索",
+        code=501
     )
 
 
@@ -270,9 +286,15 @@ async def delete_chunk(chunk_id: str):
     curl -X DELETE http://localhost:8008/api/ai/knowledge/chunk/chunk_xxx
     ```
     """
-    manager = get_knowledge_manager()
-    success = manager.delete(chunk_id)
-    return {"success": success, "chunk_id": chunk_id}
+    try:
+        manager = get_knowledge_manager()
+        success = manager.delete(chunk_id)
+        return ApiResponse.success(data={
+            "success": success,
+            "chunk_id": chunk_id
+        })
+    except Exception as e:
+        return ApiResponse.error(message=f"删除失败: {str(e)}", code=500)
 
 
 @router.delete("/clear")
@@ -289,17 +311,27 @@ async def clear_knowledge(category: str = None, tags: str = None):
     curl -X DELETE "http://localhost:8008/api/ai/knowledge/clear?category=投资理财"
     ```
     """
-    manager = get_knowledge_manager()
+    try:
+        manager = get_knowledge_manager()
 
-    if category or tags:
-        # 条件删除
-        tag_list = [t.strip() for t in tags.split(",")] if tags else None
-        count = manager.delete_by_filter(category=category, tags=tag_list)
-        return {"success": True, "deleted": count, "mode": "filtered"}
-    else:
-        # 清空全部
-        manager.rebuild_index()
-        return {"success": True, "mode": "full_clear"}
+        if category or tags:
+            # 条件删除
+            tag_list = [t.strip() for t in tags.split(",")] if tags else None
+            count = manager.delete_by_filter(category=category, tags=tag_list)
+            return ApiResponse.success(data={
+                "success": True,
+                "deleted": count,
+                "mode": "filtered"
+            })
+        else:
+            # 清空全部
+            manager.rebuild_index()
+            return ApiResponse.success(data={
+                "success": True,
+                "mode": "full_clear"
+            })
+    except Exception as e:
+        return ApiResponse.error(message=f"清空失败: {str(e)}", code=500)
 
 
 # ============ 记忆接口（对话中触发） ============
@@ -326,18 +358,21 @@ async def remember(req: RememberRequest):
       -d '{"content": "用户偏好晚上9点后下单"}'
     ```
     """
-    importer = get_text_importer()
-    result = importer.import_text(
-        text=req.content,
-        title="用户记忆",
-        category=req.category,
-        tags=req.tags
-    )
-    return {
-        "success": result.get("success", False),
-        "content": req.content,
-        "result": result
-    }
+    try:
+        importer = get_text_importer()
+        result = importer.import_text(
+            text=req.content,
+            title="用户记忆",
+            category=req.category,
+            tags=req.tags
+        )
+        return ApiResponse.success(data={
+            "success": result.get("success", False),
+            "content": req.content,
+            "result": result
+        })
+    except Exception as e:
+        return ApiResponse.error(message=f"记忆失败: {str(e)}", code=500)
 
 
 @router.post("/remember/detect")
@@ -355,25 +390,28 @@ async def detect_remember(user_message: str):
       -d '{"user_message": "记住我喜欢低风险的投资产品"}'
     ```
     """
-    handler = get_remember_handler()
-    result = handler.handle(user_message)
+    try:
+        handler = get_remember_handler()
+        result = handler.handle(user_message)
 
-    if not result["matched"]:
-        return {
-            "matched": False,
-            "message": "未检测到记住指令"
-        }
+        if not result["matched"]:
+            return ApiResponse.success(data={
+                "matched": False,
+                "message": "未检测到记住指令"
+            })
 
-    if result["result"] and result["result"].get("success"):
-        return {
-            "matched": True,
-            "remembered": True,
-            "content": result["content"][:100] + ("..." if len(result["content"]) > 100 else ""),
-            "chunks_created": result["result"].get("total_chunks", 0)
-        }
-    else:
-        return {
-            "matched": True,
-            "remembered": False,
-            "error": result["result"].get("error", "导入失败")
-        }
+        if result["result"] and result["result"].get("success"):
+            return ApiResponse.success(data={
+                "matched": True,
+                "remembered": True,
+                "content": result["content"][:100] + ("..." if len(result["content"]) > 100 else ""),
+                "chunks_created": result["result"].get("total_chunks", 0)
+            })
+        else:
+            return ApiResponse.success(data={
+                "matched": True,
+                "remembered": False,
+                "error": result["result"].get("error", "导入失败")
+            })
+    except Exception as e:
+        return ApiResponse.error(message=f"检测失败: {str(e)}", code=500)
