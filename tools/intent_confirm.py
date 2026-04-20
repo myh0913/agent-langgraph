@@ -62,13 +62,13 @@ class IntentConfirmNode(BaseToolNode):
         prompt = f"""用户说：{user_message}{history_text}{context_str}
 
 用户的意图不够明确。请分析后：
-1. 如果能根据上下文合理推断用户意图，给出最可能的选择（selected）
-2. 如果无法推断，通过 prompt 追问用户，或提供 options 列表让用户选择
+1. 如果能根据上下文合理推断用户意图，给出最可能的选择
+2. 如果无法推断，追问用户或提供选项让用户选择
 
-回复格式（只需返回实际存在的字段，不要空行）：
-- 如果追问：prompt = "你的问题"
-- 如果提供选项：options = ["选项1", "选项2", "选项3"]
-- 如果推断出意图：selected = "推断的意图" + prompt = "确认：..."
+请用自然语言回复，格式：
+- 追问时直接写问题，不要加 prefix
+- 提供选项时列出选项并标号
+- 能推断时直接确认
 """
 
         response = self._call_llm(
@@ -94,45 +94,40 @@ class IntentConfirmNode(BaseToolNode):
         解析 LLM 返回
 
         Args:
-            response: LLM 原始返回
+            response: LLM 原始返回（现在是自然语言）
 
         Returns:
             IntentConfirmOutput: 解析后的结果
         """
         text = response.strip()
 
-        prompt = None
+        if not text:
+            return IntentConfirmOutput(needs_response=False)
+
+        # 解析选项（检测 "1. xxx" 或 "选项1: xxx" 格式）
         options = None
+        import re
+        option_matches = re.findall(r'^\d+[.、]\s*(.+)$', text, re.MULTILINE)
+        if option_matches:
+            options = [o.strip() for o in option_matches]
+
+        needs_response = True
+        prompt = None
         selected = None
 
-        lines = text.split("\n")
-        for line in lines:
-            line = line.strip()
-            if line.startswith("prompt"):
-                parts = line.split("=", 1)
-                if len(parts) == 2:
-                    prompt = parts[1].strip().strip('"').strip("'")
-            elif line.startswith("options"):
-                parts = line.split("=", 1)
-                if len(parts) == 2:
-                    try:
-                        options_str = parts[1].strip().strip("[]")
-                        options = [
-                            o.strip().strip('"').strip("'")
-                            for o in options_str.split(",")
-                        ]
-                    except Exception:
-                        pass
-            elif line.startswith("selected"):
-                parts = line.split("=", 1)
-                if len(parts) == 2:
-                    selected = parts[1].strip().strip('"').strip("'")
+        # 如果是选项模式，设置 needs_response
+        if options:
+            return IntentConfirmOutput(
+                needs_response=True,
+                prompt=None,
+                options=options,
+                selected=None
+            )
 
-        needs_response = bool(prompt) or (options is not None and len(options) > 0)
-
+        # 否则把整个响应作为 prompt 返回（表示追问）
         return IntentConfirmOutput(
-            needs_response=needs_response,
-            prompt=prompt,
-            options=options,
-            selected=selected
+            needs_response=True,
+            prompt=text,
+            options=None,
+            selected=None
         )

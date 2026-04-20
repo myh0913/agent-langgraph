@@ -156,6 +156,55 @@ async def delete_session(user_id: str, session_id: str):
     return ApiResponse.success(message="会话已删除")
 
 
+@router.get("/skills")
+async def list_skills():
+    """列出所有已注册的 Skills/Tools 及其状态"""
+    from config.tool_registry import get_registry
+    registry = get_registry()
+    tools = registry.list_tools_with_status()
+    return ApiResponse.success(data={"skills": tools})
+
+
+@router.get("/skills/{name}")
+async def get_skill(name: str):
+    """获取指定 Skill 的详情"""
+    from config.tool_registry import get_registry
+    registry = get_registry()
+    try:
+        tool = registry.get(name)
+        cfg = registry.get_config(name)
+        return ApiResponse.success(data={
+            "name": name,
+            "enabled": cfg.enabled if cfg else False,
+            "description": cfg.description if cfg else tool.description,
+            "schema": tool.args_schema.schema() if hasattr(tool, "args_schema") else None
+        })
+    except KeyError:
+        return ApiResponse.error(message=f"Skill '{name}' 不存在", code=404)
+
+
+@router.post("/skills/{name}/enable")
+async def enable_skill(name: str):
+    """启用指定 Skill"""
+    from config.tool_registry import get_registry
+    registry = get_registry()
+    success = registry.set_enabled(name, True)
+    if not success:
+        return ApiResponse.error(message=f"Skill '{name}' 不存在", code=404)
+    return ApiResponse.success(message=f"Skill '{name}' 已启用")
+
+
+@router.post("/skills/{name}/disable")
+async def disable_skill(name: str):
+    """禁用指定 Skill"""
+    from config.tool_registry import get_registry
+    registry = get_registry()
+    success = registry.set_enabled(name, False)
+    if not success:
+        return ApiResponse.error(message=f"Skill '{name}' 不存在", code=404)
+    return ApiResponse.success(message=f"Skill '{name}' 已禁用")
+
+
 @router.get("/tasks")
 async def list_tasks():
     """列出所有定时任务"""

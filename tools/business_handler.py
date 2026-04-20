@@ -157,6 +157,31 @@ class BusinessHandlerNode(BaseToolNode):
 
         return "\n".join(context_parts)
 
+    def _get_available_tools_description(self) -> str:
+        """获取所有已启用工具的描述，用于 LLM 决策"""
+        from config.tool_registry import get_registry
+        registry = get_registry()
+        tools = registry.list_tools_with_status()
+        enabled = [t for t in tools if t["enabled"]]
+        disabled = [t for t in tools if not t["enabled"]]
+
+        lines = ["\n【当前可用的 Skills/Tools】（enabled=True）"]
+        if enabled:
+            for t in enabled:
+                desc = t.get("description", "") or "无描述"
+                lines.append(f"  - {t['name']}: {desc}")
+        else:
+            lines.append("  （暂无）")
+
+        lines.append("\n【已禁用的 Skills/Tools】（enabled=False）")
+        if disabled:
+            for t in disabled:
+                lines.append(f"  - {t['name']}: {t.get('description', '无描述')}")
+        else:
+            lines.append("  （暂无）")
+
+        return "\n".join(lines)
+
     def _plan_api_call(
         self,
         user_message: str,
@@ -188,15 +213,17 @@ class BusinessHandlerNode(BaseToolNode):
 当前上下文：{context or {}}
 {knowledge_text}
 
-请分析用户需求，做出行动计划：
+{self._get_available_tools_description()}
+
+请分析用户需求，从上述已启用的工具中选择最合适的一个来完成任务：
 
 1. 如果知识库已有相关信息能回答用户问题：
    - action: "answer"
    - reason: 简短说明为什么可以直接回答
 
-2. 如果需要调用后端 API 获取数据：
+2. 如果需要调用后端 API 或 Skills 获取数据：
    - action: "api_call"
-   - skill_name: 技能名称（order_query/product_query/user_query/data_stats）
+   - skill_name: 技能名称（必须来自上述已启用列表中）
    - endpoint: API 端点
    - method: GET 或 POST
    - params: 参数
@@ -209,13 +236,13 @@ class BusinessHandlerNode(BaseToolNode):
 {{
   "action": "answer | api_call | confirm",
   "reason": "简短说明",
-  "skill_name": "技能名称（仅 api_call 时需要）",
+  "skill_name": "技能名称（仅 api_call 时需要，必须来自已启用列表）",
   "endpoint": "/api/xxx（仅 api_call 时需要）",
   "method": "GET 或 POST（仅 api_call 时需要）",
   "params": {{}}（仅 api_call 时需要）,
   "confirm_message": "追问内容（仅 confirm 时需要）"
 }}"""
-
+        print("LLM 计划制定提示词：", prompt)  # 调试输出，实际部署时可以移除
         response = self._call_llm(
             prompt=prompt,
             system="你是一个业务助手，擅长分解用户需求并制定行动计划。",
