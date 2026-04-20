@@ -8,6 +8,11 @@ from typing import List, Dict, Any, Optional, Tuple
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from config.settings import settings
+from config.prompts import (
+    COMPRESSION_SUMMARY_PROMPT,
+    COMPRESSION_SYSTEM,
+    build_compression_summary_prompt,
+)
 
 
 # 默认保留的最新消息条数（压缩时）
@@ -132,21 +137,13 @@ class ContextCompressor:
             content = m.get("content", "")
             dialog_text += f"{role}：{content}\n\n"
 
-        prompt = f"""请总结以下对话的要点，保持关键信息完整：
-
-{dialog_text}
-
-要求：
-1. 概括用户的主要需求/问题
-2. 概括助手的主要回复和行动
-3. 保留关键细节（如数字、名称、结论等）
-4. 用简洁的段落表述，中文回复
-5. 控制在 500 字以内"""
+        # 使用结构化 prompt 模板
+        prompt = build_compression_summary_prompt(dialog_text=dialog_text)
 
         try:
             summary = llm_client.chat(
                 prompt=prompt,
-                system="你是一个专业的对话摘要助手，擅长提炼对话核心内容。"
+                system=COMPRESSION_SYSTEM
             )
             return summary.strip()
         except Exception as e:

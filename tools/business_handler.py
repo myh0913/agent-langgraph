@@ -9,7 +9,14 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 import httpx
 
-from config.prompts import BUSINESS_HANDLER_SYSTEM
+from config.prompts import (
+    BUSINESS_HANDLER_SYSTEM,
+    BUSINESS_PLAN_SYSTEM,
+    KNOWLEDGE_ANSWER_SYSTEM,
+    build_business_plan_prompt,
+    build_knowledge_answer_prompt,
+    build_analyze_response_prompt,
+)
 from config.settings import settings
 from .base import BaseToolNode
 
@@ -205,47 +212,19 @@ class BusinessHandlerNode(BaseToolNode):
         history = history or []
         knowledge_text = self._format_knowledge_context(knowledge_context)
 
-        prompt = f"""用户请求：{user_message}
+        # 使用结构化 prompt 模板
+        available_tools_text = self._get_available_tools_description()
+        prompt = build_business_plan_prompt(
+            user_message=user_message,
+            history=history,
+            context=context or {},
+            knowledge_text=knowledge_text,
+            available_tools_text=available_tools_text
+        )
 
-对话历史（共 {len(history)} 条消息）：
-{self._format_history(history)}
-
-当前上下文：{context or {}}
-{knowledge_text}
-
-{self._get_available_tools_description()}
-
-请分析用户需求，从上述已启用的工具中选择最合适的一个来完成任务：
-
-1. 如果知识库已有相关信息能回答用户问题：
-   - action: "answer"
-   - reason: 简短说明为什么可以直接回答
-
-2. 如果需要调用后端 API 或 Skills 获取数据：
-   - action: "api_call"
-   - skill_name: 技能名称（必须来自上述已启用列表中）
-   - endpoint: API 端点
-   - method: GET 或 POST
-   - params: 参数
-
-3. 如果意图仍然不明确需要用户确认：
-   - action: "confirm"
-   - confirm_message: 追问内容
-
-请以以下 JSON 格式返回（只返回 JSON，不要其他内容）：
-{{
-  "action": "answer | api_call | confirm",
-  "reason": "简短说明",
-  "skill_name": "技能名称（仅 api_call 时需要，必须来自已启用列表）",
-  "endpoint": "/api/xxx（仅 api_call 时需要）",
-  "method": "GET 或 POST（仅 api_call 时需要）",
-  "params": {{}}（仅 api_call 时需要）,
-  "confirm_message": "追问内容（仅 confirm 时需要）"
-}}"""
-        print("LLM 计划制定提示词：", prompt)  # 调试输出，实际部署时可以移除
         response = self._call_llm(
             prompt=prompt,
-            system="你是一个业务助手，擅长分解用户需求并制定行动计划。",
+            system=BUSINESS_PLAN_SYSTEM,
             temperature=0.3
         )
 
@@ -260,18 +239,15 @@ class BusinessHandlerNode(BaseToolNode):
         """基于知识库内容生成回答"""
         knowledge_text = self._format_knowledge_context(knowledge)
 
-        prompt = f"""用户问题：{user_message}
-
-{knowledge_text}
-
-请基于上述知识库内容，用清晰、友好的语言回答用户问题。
-如果知识库内容不足以完全回答，请说明并建议用户补充提问。
-
-回答："""
+        # 使用结构化 prompt 模板
+        prompt = build_knowledge_answer_prompt(
+            user_message=user_message,
+            knowledge_text=knowledge_text
+        )
 
         answer = self._call_llm(
             prompt=prompt,
-            system="你是一个知识库助手，擅长基于参考内容回答用户问题。",
+            system=KNOWLEDGE_ANSWER_SYSTEM,
             temperature=0.7
         )
 
@@ -350,15 +326,13 @@ class BusinessHandlerNode(BaseToolNode):
         if not api_result:
             return "没有获取到数据，请稍后再试。"
 
-        prompt = f"""用户原始请求：{user_message}{history_text}
-{knowledge_text}
-
-后端返回数据：
-{api_result}
-
-请根据返回数据，生成一段简洁、准确的用户回复。如果数据为空或异常，需要说明情况。
-
-回答："""
+        # 使用结构化 prompt 模板
+        prompt = build_analyze_response_prompt(
+            user_message=user_message,
+            history=history,
+            knowledge_text=knowledge_text,
+            api_result=api_result
+        )
 
         answer = self._call_llm(
             prompt=prompt,

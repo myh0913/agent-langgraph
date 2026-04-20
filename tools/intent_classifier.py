@@ -5,7 +5,10 @@
 import re
 from typing import Literal
 from pydantic import BaseModel, Field
-from config.prompts import INTENT_CLASSIFIER_SYSTEM
+from config.prompts import (
+    INTENT_CLASSIFIER_SYSTEM,
+    build_intent_classifier_prompt,
+)
 from .base import BaseToolNode
 
 
@@ -50,17 +53,11 @@ class IntentClassifierNode(BaseToolNode):
         """
         history = history or []
 
-        prompt = f"""用户消息：{user_message}
-
-对话历史（共 {len(history)} 条消息）：
-{self._format_history(history)}
-
-请判断这条消息的意图类型，只返回以下格式（不要有其他内容）：
-BUSINESS - 业务相关，需要调用工具或API获取数据
-GENERAL - 一般对话，闲聊、问候等与业务无关
-CONFIRM - 需要确认，消息模糊或需要用户提供更多信息
-
-同时给出你的置信度（0到1之间）和简短理由。"""
+        # 使用结构化 prompt 模板
+        prompt = build_intent_classifier_prompt(
+            user_message=user_message,
+            history=history
+        )
 
         response = self._call_llm(
             prompt=prompt,

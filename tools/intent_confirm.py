@@ -4,7 +4,10 @@
 """
 from typing import Optional, List
 from pydantic import BaseModel, Field
-from config.prompts import INTENT_CONFIRM_SYSTEM
+from config.prompts import (
+    INTENT_CONFIRM_SYSTEM,
+    build_intent_confirm_prompt,
+)
 from .base import BaseToolNode
 
 
@@ -59,17 +62,12 @@ class IntentConfirmNode(BaseToolNode):
         history = history or []
         history_text = f"\n\n对话历史（共 {len(history)} 条消息）：\n{self._format_history(history)}" if history else "(无)"
 
-        prompt = f"""用户说：{user_message}{history_text}{context_str}
-
-用户的意图不够明确。请分析后：
-1. 如果能根据上下文合理推断用户意图，给出最可能的选择
-2. 如果无法推断，追问用户或提供选项让用户选择
-
-请用自然语言回复，格式：
-- 追问时直接写问题，不要加 prefix
-- 提供选项时列出选项并标号
-- 能推断时直接确认
-"""
+        # 使用结构化 prompt 模板
+        prompt = build_intent_confirm_prompt(
+            user_message=user_message,
+            history=history,
+            context=context
+        )
 
         response = self._call_llm(
             prompt=prompt,
