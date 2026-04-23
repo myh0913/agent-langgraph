@@ -124,11 +124,23 @@ class KnowledgeManager:
         """直接导入文本"""
         tags = tags or []
 
-        chunks = self.chunker.chunk_text(
-            text,
-            source=source,
-            metadata={"title": title}
-        )
+        # 用户主动记忆的短文本（category="memory"），直接构建单块绕过 min_chunk_length
+        if category == "memory":
+            import hashlib, time
+            chunk_id = f"chunk_memory_{hashlib.md5(text.encode()).hexdigest()[:8]}"
+            chunks = [{
+                "id": chunk_id,
+                "content": text.strip(),
+                "source": source,
+                "title": title or "用户记忆",
+                "metadata": {"chunk_index": 0, "char_count": len(text)}
+            }]
+        else:
+            chunks = self.chunker.chunk_text(
+                text,
+                source=source,
+                metadata={"title": title}
+            )
 
         if not chunks:
             return {"success": False, "error": "分块失败或文本为空"}

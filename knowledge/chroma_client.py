@@ -194,6 +194,10 @@ class ChromaClient:
             # 按分数排序
             formatted.sort(key=lambda x: x["score"], reverse=True)
 
+            # 过滤低分结果
+            min_score = knowledge_settings.SEARCH_SCORE_THRESHOLD
+            formatted = [r for r in formatted if r["score"] >= min_score]
+
             return formatted
 
         except Exception as e:

@@ -2,7 +2,7 @@
 API 路由定义
 使用 FastAPI 定义 REST API 接口
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -38,7 +38,7 @@ class MessageRequest(BaseModel):
 # ============== 路由 ==============
 
 @router.post("/message")
-async def send_message(request: MessageRequest):
+async def send_message(request: MessageRequest, http_request: Request):
     """
     发送消息并获取响应
 
@@ -49,6 +49,10 @@ async def send_message(request: MessageRequest):
     4. 保存消息到历史
     5. 返回响应
     """
+    # 从 Header 获取 Authorization token
+    auth_header = http_request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "") if auth_header.startswith("Bearer ") else auth_header
+    
     # 获取或创建会话
     session_id = session_manager.get_or_create_session(
         user_id=request.user_id,
@@ -69,6 +73,7 @@ async def send_message(request: MessageRequest):
     agent_input = {
         "user_id": request.user_id,
         "session_id": session_id,
+        "token": token,
         "messages": history,
         "current_message": request.message,
         "intent_type": "",

@@ -28,7 +28,7 @@ _registry.register_class("business_handler", BusinessHandlerNode, enabled=True)
 
 # 注册 Skills（从 skills/ 目录导入）
 from skills.currency_converter import CurrencyConverterSkill
-_registry.register_class("currency_converter", CurrencyConverterSkill, enabled=True, description="提供货币转换功能，输入示例：{{'amount': 100, 'from_currency': 'USD', 'to_currency': 'EUR'}}")
+_registry.register_class("currency_converter", CurrencyConverterSkill, enabled=True, description="货币转换工具（汇率查询、货币换算）。当用户问汇率、货币转换时必须使用，如：'320美元是多少人民币'、'美元兑日元汇率'、'EUR to CNY rate'。输入格式：{'amount': 100, 'from_currency': 'USD', 'to_currency': 'EUR'}")
 
 
 __all__ = [

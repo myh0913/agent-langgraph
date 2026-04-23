@@ -58,7 +58,8 @@ class CurrencyConverterSkill(BaseToolNode):
         self,
         amount: float = 1.0,
         from_currency: str = "USD",
-        to_currency: str = "CNY"
+        to_currency: str = "CNY",
+        token: Optional[str] = None,
     ) -> CurrencyConverterOutput:
         """
         执行货币转换
@@ -67,10 +68,11 @@ class CurrencyConverterSkill(BaseToolNode):
             amount: 要转换的金额
             from_currency: 源货币代码
             to_currency: 目标货币代码
-
+            token: 用户认证 token
         Returns:
             CurrencyConverterOutput: 转换结果
         """
+        print(111111111111,from_currency, token)
         # 标准化货币代码（大写）
         from_curr = from_currency.upper().strip()
         to_curr = to_currency.upper().strip()
@@ -127,6 +129,7 @@ class CurrencyConverterSkill(BaseToolNode):
         Returns:
             float: 汇率，或 None 获取失败
         """
+        print(222222222222,from_currency)
         cache_key = f"{from_currency}_{to_currency}"
 
         # 检查缓存
@@ -160,6 +163,7 @@ class CurrencyConverterSkill(BaseToolNode):
         Returns:
             float: 1 USD 等于多少该货币，或 None 获取失败
         """
+        print(33333333333,currency)
         if currency == "USD":
             return 1.0
 
@@ -174,7 +178,7 @@ class CurrencyConverterSkill(BaseToolNode):
         try:
             # 方案1：使用 frankfurter.app（免费，无需 API key）
             url = f"https://api.frankfurter.app/latest?from=USD&to={currency}"
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                 resp = client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -190,4 +194,5 @@ class CurrencyConverterSkill(BaseToolNode):
 
     def get_supported_currencies(self) -> list:
         """获取支持的货币列表"""
+        print(44444444444)
         return self.SUPPORTED_CURRENCIES.copy()

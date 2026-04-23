@@ -4,12 +4,14 @@ LangGraph 节点定义
 """
 from typing import TypedDict
 from config.tool_registry import get_registry
+from config.prompts import GENERAL_HANDLER_SYSTEM, build_general_response_prompt
 
 
 class AgentState(TypedDict):
     """Agent 状态定义，在图的各节点之间传递"""
     user_id: str                      # 用户ID，用于会话隔离
     session_id: str                   # 会话ID
+    token: str                        # 用户认证 token
     messages: list                    # 消息历史
     current_message: str              # 当前用户消息
     intent_type: str                  # 识别的意图类型
@@ -50,6 +52,7 @@ def business_handler_node(state: AgentState) -> AgentState:
     result = handler._run(
         user_message=state["current_message"],
         session_id=state["session_id"],
+        token=state.get("token", ""),
         history=state.get("messages", []),
         context=state.get("context")
     )
@@ -87,6 +90,28 @@ def intent_confirm_node(state: AgentState) -> AgentState:
     return state
 
 
+def remember_handler_node(state: AgentState) -> AgentState:
+    """
+    记住指令节点
+    当意图识别为 REMEMBER 时，将用户要求记住的内容写入知识库
+    """
+    from knowledge.importers import get_remember_handler
+
+    handler = get_remember_handler()
+    result = handler.handle(state["current_message"])
+
+    if not result or not result.get("matched"):
+        state["response"] = "抱歉，我没有理解您的记住指令，请尝试说「记住xxx」。"
+    else:
+        import_result = result.get("result", {})
+        if import_result.get("success"):
+            state["response"] = f"好的，我已经记住：{result.get('content', '')}"
+        else:
+            state["response"] = f"记住失败：{import_result.get('error', '未知错误')}"
+
+    return state
+
+
 def response_node(state: AgentState) -> AgentState:
     """
     最终响应节点
@@ -95,5 +120,32 @@ def response_node(state: AgentState) -> AgentState:
     if state.get("response"):
         return state
 
-    state["response"] = "您好！请问有什么可以帮您的？"
+    intent_type = state.get("intent_type", "GENERAL")
+    history = state.get("messages", [])
+    user_message = state.get("current_message", "")
+
+    # GENERAL 意图：走 LLM + history 生成 contextual 回复
+    if intent_type == "GENERAL":
+        from config.llm import get_llm_client
+        from config.tool_registry import get_registry
+        registry = get_registry()
+        tools = registry.list_tools_with_status()
+        available_tools_text = "\n".join([
+            f"- {t['name']}: {t.get('description', '无描述')}" + ("（已启用）" if t["enabled"] else "（已禁用）")
+            for t in tools
+        ]) if tools else "（无）"
+
+        llm = get_llm_client()
+        prompt = build_general_response_prompt(
+            user_message=user_message,
+            history=history,
+            context=state.get("context", {}),
+            knowledge_text="",
+            available_tools_text=available_tools_text
+        )
+        response = llm.chat(prompt=prompt, system=GENERAL_HANDLER_SYSTEM, temperature=0.7)
+        state["response"] = response
+    else:
+        state["response"] = "您好！请问有什么可以帮您的？"
+
     return state

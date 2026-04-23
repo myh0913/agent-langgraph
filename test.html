@@ -5,93 +5,236 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent 接口测试</title>
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: #f5f5f5;
         padding: 20px;
       }
-      .container { max-width: 1400px; margin: 0 auto; }
-      h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 20px; }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 20px;
+      }
       h2 {
-        font-size: 14px; color: #333; margin-bottom: 12px;
-        border-left: 4px solid #4f46e5; padding-left: 10px;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 12px;
+        border-left: 4px solid #4f46e5;
+        padding-left: 10px;
       }
       .card {
-        background: #fff; border-radius: 10px; padding: 16px;
-        margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: #fff;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
       }
       label {
-        display: block; font-size: 12px; color: #666;
-        margin-bottom: 4px; font-weight: 500;
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+        font-weight: 500;
       }
-      input, textarea, select {
-        width: 100%; border: 1px solid #ddd; border-radius: 6px;
-        padding: 8px 10px; font-size: 13px; outline: none;
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 13px;
+        outline: none;
         transition: border-color 0.2s;
       }
-      input:focus, textarea:focus, select:focus { border-color: #4f46e5; }
-      textarea { resize: vertical; min-height: 60px; }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: #4f46e5;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 60px;
+      }
       .btn {
-        padding: 8px 16px; background: #4f46e5; color: #fff;
-        border: none; border-radius: 6px; font-size: 13px;
-        font-weight: 600; cursor: pointer; transition: background 0.2s;
+        padding: 8px 16px;
+        background: #4f46e5;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
       }
-      .btn:hover { background: #4338ca; }
-      .btn:disabled { background: #a5b4fc; cursor: not-allowed; }
-      .btn-danger { background: #ef4444; }
-      .btn-danger:hover { background: #dc2626; }
-      .btn-secondary { background: #6b7280; }
-      .btn-secondary:hover { background: #4b5563; }
-      .btn-sm { padding: 6px 12px; font-size: 12px; }
-      .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-      .flex-1 { flex: 1; min-width: 200px; }
+      .btn:hover {
+        background: #4338ca;
+      }
+      .btn:disabled {
+        background: #a5b4fc;
+        cursor: not-allowed;
+      }
+      .btn-danger {
+        background: #ef4444;
+      }
+      .btn-danger:hover {
+        background: #dc2626;
+      }
+      .btn-secondary {
+        background: #6b7280;
+      }
+      .btn-secondary:hover {
+        background: #4b5563;
+      }
+      .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .flex-1 {
+        flex: 1;
+        min-width: 200px;
+      }
       .msg {
-        border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
-        font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-all;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
       }
-      .msg.user { background: #e0e7ff; color: #3730a3; }
-      .msg.agent { background: #f3f4f6; color: #1f2937; }
-      .msg.api { background: #fef3c7; color: #92400e; font-size: 12px; }
+      .msg.user {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .msg.agent {
+        background: #f3f4f6;
+        color: #1f2937;
+      }
+      .msg.api {
+        background: #fef3c7;
+        color: #92400e;
+        font-size: 12px;
+      }
       #history {
-        display: flex; flex-direction: column; gap: 6px;
-        max-height: 350px; overflow-y: auto; padding-right: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 350px;
+        overflow-y: auto;
+        padding-right: 4px;
       }
       #history:empty::before {
-        content: "发送消息开始测试..."; color: #aaa; font-size: 13px;
-        text-align: center; padding: 20px;
+        content: "发送消息开始测试...";
+        color: #aaa;
+        font-size: 13px;
+        text-align: center;
+        padding: 20px;
       }
-      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
       pre {
-        background: #1f2937; color: #e5e7eb; padding: 12px;
-        border-radius: 6px; font-size: 12px; overflow-x: auto;
-        white-space: pre-wrap; word-break: break-all; margin-top: 8px;
+        background: #1f2937;
+        color: #e5e7eb;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin-top: 8px;
       }
-      .response-box { margin-top: 10px; }
+      .response-box {
+        margin-top: 10px;
+      }
       .section-title {
-        font-size: 12px; font-weight: 600; color: #4f46e5; margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #4f46e5;
+        margin-bottom: 6px;
       }
-      .tab-nav { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+      .tab-nav {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
       .tab-btn {
-        padding: 6px 12px; background: #f3f4f6; border: none;
-        border-radius: 6px; font-size: 12px; cursor: pointer;
+        padding: 6px 12px;
+        background: #f3f4f6;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
       }
-      .tab-btn.active { background: #4f46e5; color: #fff; }
+      .tab-btn.active {
+        background: #4f46e5;
+        color: #fff;
+      }
       .result-item {
-        background: #f9fafb; border-radius: 8px; padding: 12px;
-        margin-bottom: 8px; font-size: 13px;
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        font-size: 13px;
       }
-      .result-item .title { font-weight: 600; color: #4f46e5; margin-bottom: 4px; }
-      .result-item .meta { font-size: 11px; color: #666; margin-bottom: 6px; }
-      .result-item .content { color: #374151; line-height: 1.5; }
+      .result-item .title {
+        font-weight: 600;
+        color: #4f46e5;
+        margin-bottom: 4px;
+      }
+      .result-item .meta {
+        font-size: 11px;
+        color: #666;
+        margin-bottom: 6px;
+      }
+      .result-item .content {
+        color: #374151;
+        line-height: 1.5;
+      }
       .badge {
-        display: inline-block; padding: 2px 8px; border-radius: 4px;
-        font-size: 11px; margin-right: 4px;
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin-right: 4px;
       }
-      .badge-success { background: #d1fae5; color: #065f46; }
-      .badge-error { background: #fee2e2; color: #991b1b; }
-      .badge-info { background: #e0e7ff; color: #3730a3; }
+      .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .badge-error {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .badge-info {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
     </style>
   </head>
   <body>
@@ -113,10 +256,17 @@
             <label>Session ID（自动填充）</label>
             <input id="sessionId" placeholder="留空则创建新会话" />
           </div>
+          <div>
+            <label>Token（测试用）</label>
+            <input
+              id="token"
+              value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuaWNrTmFtZSI6Iui2heeuoSIsImxvZ2luTmFtZSI6ImFkbWluIiwiZXhwIjoxNzc3MjYxNjc0LCJ1c2VySWQiOjF9.K1NcL7zy3yyYgTyKrUor0WcH6kZLulD1rbdsgNA-2KQ"
+            />
+          </div>
         </div>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
         <!-- 左列 -->
         <div>
           <!-- 消息对话 -->
@@ -132,14 +282,13 @@
           <!-- 会话管理 -->
           <div class="card">
             <h2>📋 会话管理</h2>
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px">
               <label>Session ID（查看/删除用）</label>
               <input id="sessionIdInput" placeholder="输入 Session ID，如：a1b2c3d4-..." />
             </div>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <button class="btn btn-sm" onclick="listSessions()">列出会话</button>
-              <button class="btn btn-sm" onclick="getHistory()">查看历史</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteSession()">删除</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSession()">删除选中</button>
             </div>
             <div id="sessionResult" class="response-box"></div>
           </div>
@@ -147,13 +296,13 @@
           <!-- Skills 管理 -->
           <div class="card">
             <h2>🛠 Skills 管理</h2>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <button class="btn btn-sm" onclick="listSkills()">列出 Skills</button>
               <button class="btn btn-sm btn-secondary" onclick="getSkillsDetail()">查看详情</button>
             </div>
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px">
               <label>Skill 名称</label>
-              <input id="skillName" placeholder="如：currency_converter" style="margin-bottom: 6px;" />
+              <input id="skillName" placeholder="如：currency_converter" style="margin-bottom: 6px" />
             </div>
             <div class="row">
               <button class="btn btn-sm" onclick="enableSkill()">启用</button>
@@ -165,25 +314,25 @@
           <!-- 知识库导入 -->
           <div class="card">
             <h2>📚 知识库 - 导入</h2>
-            
+
             <div class="section-title">文本导入</div>
-            <textarea id="kbText" placeholder="输入要导入的知识文本..." style="margin-bottom: 6px;"></textarea>
-            <div class="grid-2" style="margin-bottom: 6px;">
+            <textarea id="kbText" placeholder="输入要导入的知识文本..." style="margin-bottom: 6px"></textarea>
+            <div class="grid-2" style="margin-bottom: 6px">
               <input id="kbTextTitle" placeholder="标题（可选）" />
               <input id="kbTextCategory" placeholder="分类" />
             </div>
-            <button class="btn btn-sm" onclick="importKbText()" style="margin-bottom: 12px;">导入文本</button>
+            <button class="btn btn-sm" onclick="importKbText()" style="margin-bottom: 12px">导入文本</button>
 
             <div class="section-title">文件上传</div>
-            <input type="file" id="kbFile" accept=".md,.txt,.json" style="margin-bottom: 6px;" />
-            <div class="grid-2" style="margin-bottom: 6px;">
+            <input type="file" id="kbFile" accept=".md,.txt,.json" style="margin-bottom: 6px" />
+            <div class="grid-2" style="margin-bottom: 6px">
               <input id="kbFileCategory" placeholder="分类" />
               <input id="kbFileTags" placeholder="标签（逗号分隔）" />
             </div>
-            <button class="btn btn-sm" onclick="importKbFile()" style="margin-bottom: 12px;">上传文件</button>
+            <button class="btn btn-sm" onclick="importKbFile()" style="margin-bottom: 12px">上传文件</button>
 
             <div class="section-title">API 抓取</div>
-            <input id="kbApiUrl" placeholder="API URL" style="margin-bottom: 6px;" />
+            <input id="kbApiUrl" placeholder="API URL" style="margin-bottom: 6px" />
             <div class="row">
               <button class="btn btn-sm" onclick="importKbApi()">抓取导入</button>
             </div>
@@ -196,16 +345,16 @@
           <!-- 知识库搜索 -->
           <div class="card">
             <h2>🔍 知识库 - 搜索</h2>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <input id="kbSearchQuery" class="flex-1" placeholder="搜索知识，如：基金投资" />
-              <input id="kbSearchTopK" type="number" value="5" style="width: 60px;" />
+              <input id="kbSearchTopK" type="number" value="5" style="width: 60px" />
               <button class="btn btn-sm" onclick="searchKb()">搜索</button>
             </div>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <input id="kbSearchCategory" class="flex-1" placeholder="按分类过滤" />
               <input id="kbSearchTags" class="flex-1" placeholder="按标签过滤" />
             </div>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <button class="btn btn-sm" onclick="getKbStats()">查看统计</button>
               <button class="btn btn-sm btn-secondary" onclick="getKbChunks()">查看碎片</button>
               <button class="btn btn-sm btn-danger" onclick="clearKb()">清空</button>
@@ -217,7 +366,7 @@
           <!-- 定时任务 -->
           <div class="card">
             <h2>⏰ 定时任务</h2>
-            <div class="row" style="margin-bottom: 8px;">
+            <div class="row" style="margin-bottom: 8px">
               <button class="btn btn-sm" onclick="listTasks()">列出任务</button>
               <button class="btn btn-sm btn-secondary" onclick="createTask()">创建任务</button>
             </div>
@@ -242,6 +391,7 @@
       const apiBase = () => document.getElementById("apiBase").value.trim();
       const userId = () => document.getElementById("userId").value.trim();
       const sessionId = () => document.getElementById("sessionIdInput").value.trim();
+      const token = () => document.getElementById("token").value.trim();
       let currentSessionId = "";
 
       // 统一显示结果
@@ -250,9 +400,9 @@
         if (!box) return;
         // 兼容新旧结构：data 可能在 data.data 里，也可能在 data 本身
         const respData = data?.data !== undefined ? data.data : data;
-        const state = data?.state || (isError ? 'error' : 'success');
-        const bg = state === 'error' ? '#fef2f2' : '#f9fafb';
-        const color = state === 'error' ? '#991b1b' : '#1f2937';
+        const state = data?.state || (isError ? "error" : "success");
+        const bg = state === "error" ? "#fef2f2" : "#f9fafb";
+        const color = state === "error" ? "#991b1b" : "#1f2937";
         box.innerHTML = `<pre style="background:${bg};color:${color}">${JSON.stringify(respData, null, 2)}</pre>`;
       }
 
@@ -265,9 +415,10 @@
 
       // 通用 API 请求（统一 ApiResponse 结构）
       async function apiFetch(url, options = {}) {
+        const { headers, ...rest } = options;
         const resp = await fetch(url, {
-          headers: { "Content-Type": "application/json", ...options.headers },
-          ...options,
+          headers: { "Content-Type": "application/json", ...headers },
+          ...rest,
         });
         const json = await resp.json();
         // 统一结构：{code, state, message, data, request_id}
@@ -293,8 +444,13 @@
           const sid = sessionId();
           if (sid) payload.session_id = sid;
 
+          const tk = token();
+          const headers = {};
+          if (tk) headers["Authorization"] = tk;
+
           const json = await apiFetch(`${apiBase()}/api/ai/message`, {
             method: "POST",
+            headers,
             body: JSON.stringify(payload),
           });
 
@@ -313,7 +469,6 @@
             `时间: ${data.timestamp || ""}`,
           ];
           appendMsg("agent", lines.join("\n"));
-
         } catch (e) {
           appendMsg("agent", `❌ 错误: ${e?.data?.message || e.message || JSON.stringify(e)}`);
         } finally {
@@ -339,7 +494,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/history/${userId()}/${sid}`);
           showResult("sessionResult", json);
-        } catch (e) { showError("sessionResult", e); }
+        } catch (e) {
+          showError("sessionResult", e);
+        }
       }
 
       async function deleteSession() {
@@ -349,7 +506,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/session/${userId()}/${sid}`, { method: "DELETE" });
           showResult("sessionResult", json);
-        } catch (e) { showError("sessionResult", e); }
+        } catch (e) {
+          showError("sessionResult", e);
+        }
       }
 
       async function listSessions() {
@@ -358,15 +517,49 @@
           const json = await apiFetch(`${apiBase()}/api/ai/sessions/${userId()}`);
           const data = json.data || {};
           const sessions = data.sessions || [];
-          let html = `<p style="color:#666;font-size:12px">共 ${sessions.length} 个会话：</p>`;
-          sessions.forEach(s => {
-            html += `<div class="result-item">
-              <div class="meta"><strong>${s.session_id}</strong></div>
-              <div class="meta">创建: ${s.created_at || "-"} | 活跃: ${s.last_active || "-"}</div>
-            </div>`;
-          });
-          document.getElementById("sessionResult").innerHTML = html || '<p style="color:#999">暂无会话</p>';
-        } catch (e) { showError("sessionResult", e); }
+          let html = `<p style="color:#666;font-size:12px;margin-bottom:8px">共 ${sessions.length} 个会话（单击选中）：</p>`;
+          if (!sessions.length) {
+            html += '<p style="color:#999;font-size:13px;text-align:center;padding:15px;">暂无会话</p>';
+          } else {
+            sessions.forEach((s) => {
+              html += `<div class="result-item session-item" data-sid="${escapeHtml(s.session_id)}" onclick="selectSession('${escapeHtml(s.session_id)}')" style="cursor:pointer">
+                <div class="meta"><strong>${escapeHtml(s.session_id)}</strong></div>
+                <div class="meta">创建: ${s.created_at || "-"} | 活跃: ${s.last_active || "-"}</div>
+              </div>`;
+            });
+          }
+          document.getElementById("sessionResult").innerHTML = html;
+        } catch (e) {
+          showError("sessionResult", e);
+        }
+      }
+
+      async function selectSession(sid) {
+        // 选中会话，后续发送消息自动使用此 session_id
+        currentSessionId = sid;
+        document.getElementById("sessionIdInput").value = sid;
+
+        // 高亮选中项
+        document.querySelectorAll(".session-item").forEach((el) => {
+          el.style.borderLeft = el.dataset.sid === sid ? "3px solid #4f46e5" : "3px solid transparent";
+          el.style.background = el.dataset.sid === sid ? "#eef2ff" : "#f9fafb";
+        });
+
+        // 加载该会话的历史消息到消息对话区
+        document.getElementById("history").innerHTML = "";
+        try {
+          const json = await apiFetch(`${apiBase()}/api/ai/history/${userId()}/${sid}`);
+          const messages = json.data?.messages || [];
+          if (!messages.length) {
+            appendMsg("agent", "（此会话暂无历史消息）");
+          } else {
+            messages.forEach((m) => {
+              appendMsg(m.role === "user" ? "user" : "agent", m.content);
+            });
+          }
+        } catch (e) {
+          appendMsg("agent", `加载历史失败: ${e?.data?.message || e.message || JSON.stringify(e)}`);
+        }
       }
 
       // ========== Skills 管理 ==========
@@ -376,8 +569,8 @@
           const data = json.data || {};
           const skills = data.skills || [];
           let html = `<p style="color:#666;font-size:12px;margin-bottom:8px">共 ${skills.length} 个 Skills：</p>`;
-          skills.forEach(s => {
-            const badge = s.enabled 
+          skills.forEach((s) => {
+            const badge = s.enabled
               ? '<span class="badge badge-success">已启用</span>'
               : '<span class="badge badge-error">已禁用</span>';
             html += `<div class="result-item">
@@ -386,7 +579,9 @@
             </div>`;
           });
           document.getElementById("skillResult").innerHTML = html;
-        } catch (e) { showError("skillResult", e); }
+        } catch (e) {
+          showError("skillResult", e);
+        }
       }
 
       async function getSkillsDetail() {
@@ -394,7 +589,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/skills/${name}`);
           showResult("skillResult", json);
-        } catch (e) { showError("skillResult", e); }
+        } catch (e) {
+          showError("skillResult", e);
+        }
       }
 
       async function enableSkill() {
@@ -403,7 +600,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/skills/${name}/enable`, { method: "POST" });
           showResult("skillResult", json);
-        } catch (e) { showError("skillResult", e); }
+        } catch (e) {
+          showError("skillResult", e);
+        }
       }
 
       async function disableSkill() {
@@ -412,7 +611,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/skills/${name}/disable`, { method: "POST" });
           showResult("skillResult", json);
-        } catch (e) { showError("skillResult", e); }
+        } catch (e) {
+          showError("skillResult", e);
+        }
       }
 
       // ========== 知识库 ==========
@@ -428,7 +629,9 @@
           });
           showResult("kbImportResult", json);
           if (json.data?.success) document.getElementById("kbText").value = "";
-        } catch (e) { showError("kbImportResult", e); }
+        } catch (e) {
+          showError("kbImportResult", e);
+        }
       }
 
       async function importKbFile() {
@@ -448,7 +651,9 @@
           const json = await resp.json();
           showResult("kbImportResult", json);
           if (json.data?.success) fileInput.value = "";
-        } catch (e) { showError("kbImportResult", e); }
+        } catch (e) {
+          showError("kbImportResult", e);
+        }
       }
 
       async function importKbApi() {
@@ -460,7 +665,9 @@
             body: JSON.stringify({ url, method: "GET", category: "" }),
           });
           showResult("kbImportResult", json);
-        } catch (e) { showError("kbImportResult", e); }
+        } catch (e) {
+          showError("kbImportResult", e);
+        }
       }
 
       async function searchKb() {
@@ -477,20 +684,23 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/knowledge/search?${params}`);
           renderSearchResults("kbSearchResults", json.data || {});
-        } catch (e) { showError("kbSearchResults", e); }
+        } catch (e) {
+          showError("kbSearchResults", e);
+        }
       }
 
       function renderSearchResults(containerId, data) {
         const container = document.getElementById(containerId);
         const results = data.results || [];
         if (!results.length) {
-          container.innerHTML = '<p style="color:#999;font-size:12px;text-align:center;padding:15px;">没有找到相关知识</p>';
+          container.innerHTML =
+            '<p style="color:#999;font-size:12px;text-align:center;padding:15px;">没有找到相关知识</p>';
           return;
         }
         let html = `<p style="color:#666;font-size:12px;margin-bottom:8px;">找到 ${data.total || results.length} 条相关知识：</p>`;
-        results.forEach(r => {
+        results.forEach((r) => {
           const score = r.score ? (r.score * 100).toFixed(1) + "%" : "N/A";
-          const tags = Array.isArray(r.tags) ? r.tags.join(", ") : (r.tags || "");
+          const tags = Array.isArray(r.tags) ? r.tags.join(", ") : r.tags || "";
           const content = (r.content || "").substring(0, 200);
           html += `<div class="result-item">
             <div class="title">${escapeHtml(r.title || "无标题")} <span class="badge badge-success">${score}</span></div>
@@ -519,7 +729,9 @@
               </div>
             </div>
           `;
-        } catch (e) { showError("kbStatsResult", e); }
+        } catch (e) {
+          showError("kbStatsResult", e);
+        }
       }
 
       async function getKbChunks() {
@@ -527,8 +739,11 @@
           const json = await apiFetch(`${apiBase()}/api/ai/knowledge/stats`);
           const data = json.data || {};
           const total = data.total_chunks || data.total || 0;
-          document.getElementById("kbStatsResult").innerHTML = `<p style="color:#666;font-size:12px">知识库共有 ${total} 条碎片（不支持单独查看，请使用搜索）</p>`;
-        } catch (e) { showError("kbStatsResult", e); }
+          document.getElementById("kbStatsResult").innerHTML =
+            `<p style="color:#666;font-size:12px">知识库共有 ${total} 条碎片（不支持单独查看，请使用搜索）</p>`;
+        } catch (e) {
+          showError("kbStatsResult", e);
+        }
       }
 
       async function clearKb() {
@@ -536,7 +751,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/knowledge/clear`, { method: "DELETE" });
           showResult("kbStatsResult", json);
-        } catch (e) { showError("kbStatsResult", e); }
+        } catch (e) {
+          showError("kbStatsResult", e);
+        }
       }
 
       // ========== 定时任务 ==========
@@ -544,7 +761,9 @@
         try {
           const json = await apiFetch(`${apiBase()}/api/ai/tasks`);
           showResult("taskResult", json);
-        } catch (e) { showError("taskResult", e); }
+        } catch (e) {
+          showError("taskResult", e);
+        }
       }
 
       async function createTask() {
@@ -554,7 +773,9 @@
             body: JSON.stringify({ name: "test_" + Date.now(), cron: "*/5 * * * *", payload: {} }),
           });
           showResult("taskResult", json);
-        } catch (e) { showError("taskResult", e); }
+        } catch (e) {
+          showError("taskResult", e);
+        }
       }
 
       // ========== 健康检查 ==========
@@ -562,14 +783,18 @@
         try {
           const json = await apiFetch(`${apiBase()}/health`);
           showResult("healthResult", json);
-        } catch (e) { showError("healthResult", e); }
+        } catch (e) {
+          showError("healthResult", e);
+        }
       }
 
       async function rootInfo() {
         try {
           const json = await apiFetch(`${apiBase()}/`);
           showResult("healthResult", json);
-        } catch (e) { showError("healthResult", e); }
+        } catch (e) {
+          showError("healthResult", e);
+        }
       }
 
       function escapeHtml(text) {

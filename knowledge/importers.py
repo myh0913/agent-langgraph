@@ -228,15 +228,26 @@ class RememberHandler:
     """记住指令处理器 - 处理用户说"记住xxx"的场景"""
 
     def __init__(self):
-        self.text_importer = TextImporter()
+        self.manager = get_knowledge_manager()
+        # 按优先级排列：冒号分隔优先，然后空格分隔，最后无分隔
         self._patterns = [
-            r"记住[：:]\s*(.+)",
-            r"记住\s+(.+)",
-            r"请记住\s+(.+)",
-            r"帮我记住\s+(.+)",
-            r"记一下\s+(.+)",
-            r"把这个记下来[：:]\s*(.+)",
-            r"记下来[：:]\s*(.+)",
+            # 记住：xxx / 记住xxx
+            r"记住[：:]?\s*(.+)",
+            r"记住(.+)",
+            # 请记住：xxx / 请记住xxx
+            r"请记住[：:]?\s*(.+)",
+            r"请记住(.+)",
+            # 帮我记住：xxx / 帮我记住xxx
+            r"帮我记住[：:]?\s*(.+)",
+            r"帮我记住(.+)",
+            # 记一下xxx / 记一下：xxx
+            r"记一下[：:]?\s*(.+)",
+            r"记一下(.+)",
+            # 记下来xxx / 记下来：xxx / 把这个记下来xxx
+            r"记下来[：:]?\s*(.+)",
+            r"记下来(.+)",
+            r"把这个记下来[：:]?\s*(.+)",
+            r"把这个记下来(.+)",
         ]
 
     def handle(self, user_message: str) -> Optional[Dict[str, Any]]:
@@ -254,7 +265,7 @@ class RememberHandler:
         if not content:
             return {"matched": False, "content": None, "result": None}
 
-        result = self.text_importer.import_text(
+        result = self.manager.import_text(
             text=content,
             title="用户记忆",
             category="memory",

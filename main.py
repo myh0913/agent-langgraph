@@ -3,7 +3,12 @@ Agent 主入口
 启动 API 服务和定时任务调度器
 """
 import logging
+import os
 import sys
+
+# 强制 HuggingFace Hub 离线模式，避免每次加载模型时发大量验证请求
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -24,6 +29,10 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+# 过滤掉 httpx 和 sentence_transformers 的 INFO 请求日志（只保留 WARNING 及以上）
+# for noisy_logger in ["httpx", "sentence_transformers", "huggingface_hub"]:
+#     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 

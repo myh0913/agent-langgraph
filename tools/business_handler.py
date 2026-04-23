@@ -25,6 +25,7 @@ class BusinessHandlerInput(BaseModel):
     """业务处理输入"""
     user_message: str = Field(description="用户消息")
     session_id: str = Field(description="会话ID")
+    token: str = Field(default="", description="用户认证 token")
     history: list = Field(default_factory=list, description="对话历史")
     context: Optional[Dict[str, Any]] = Field(default=None, description="上下文")
 
@@ -57,6 +58,7 @@ class BusinessHandlerNode(BaseToolNode):
         self,
         user_message: str,
         session_id: str,
+        token: str = "",
         history: list = None,
         context: Optional[Dict[str, Any]] = None
     ) -> BusinessHandlerOutput:
@@ -77,11 +79,15 @@ class BusinessHandlerNode(BaseToolNode):
 
         # Step 1: 让 LLM 分析用户问题 + 知识库上下文，制定计划
         api_plan = self._plan_api_call(user_message, history, context, knowledge_context)
-
+        print("--------------- API/工具 调用计划 -----------------")
+        print(api_plan)
+        print("--------------------------------")
         if not api_plan:
             # 没有 API 调用计划，检查知识库是否有答案
             if knowledge_context:
-                response = self._answer_from_knowledge(user_message, knowledge_context)
+                response = self._answer_from_knowledge(
+                    user_message, knowledge_context, history, context
+                )
                 return BusinessHandlerOutput(
                     success=True,
                     response=response,
@@ -101,7 +107,11 @@ class BusinessHandlerNode(BaseToolNode):
         action = api_plan.get("action", "api_call")
 
         if action == "answer" and knowledge_context:
-            response = self._answer_from_knowledge(user_message, knowledge_context, api_plan.get("reason"))
+            response = self._answer_from_knowledge(
+                user_message, knowledge_context, history, context,
+                available_tools_text=self._get_available_tools_description(),
+                reason=api_plan.get("reason")
+            )
             return BusinessHandlerOutput(
                 success=True,
                 response=response,
@@ -117,10 +127,33 @@ class BusinessHandlerNode(BaseToolNode):
                 knowledge_used=knowledge_ids
             )
 
-        # Step 2: 调用后端 API
-        api_result = self._call_backend(api_plan)
+        # Step 2: 调用 Skill 或后端 API
+        skill_name = api_plan.get("skill_name", "")
+        if skill_name:
+            # 有 skill_name，说明要调用本地 Skill
+            api_result = self._call_skill(skill_name, api_plan.get("params", {}), token=token)
+            # Skill 返回结果可能有现成的 message
+            if api_result.get("success") and api_result.get("message"):
+                return BusinessHandlerOutput(
+                    success=True,
+                    data=api_result,
+                    response=api_result["message"],
+                    tools_used=[skill_name],
+                    knowledge_used=knowledge_ids
+                )
+            # 如果 Skill 返回失败，走后续分析逻辑
+            if "error" in api_result:
+                return BusinessHandlerOutput(
+                    success=False,
+                    response=f"Skill 执行失败：{api_result['error']}",
+                    tools_used=[skill_name],
+                    knowledge_used=knowledge_ids
+                )
+        else:
+            # 没有 skill_name，调后端 HTTP API
+            api_result = self._call_backend(api_plan, token=token)
 
-        # Step 3: 分析 API 返回，生成回复
+        # Step 3: 分析 API 返回，生成回复（仅后端 API 或 Skill 返回无 message 时走这里）
         response = self._analyze_and_respond(
             user_message, api_result, history, context, knowledge_context
         )
@@ -214,6 +247,8 @@ class BusinessHandlerNode(BaseToolNode):
 
         # 使用结构化 prompt 模板
         available_tools_text = self._get_available_tools_description()
+        print("--------------- 可用工具描述 -----------------")
+        print(available_tools_text)
         prompt = build_business_plan_prompt(
             user_message=user_message,
             history=history,
@@ -227,22 +262,32 @@ class BusinessHandlerNode(BaseToolNode):
             system=BUSINESS_PLAN_SYSTEM,
             temperature=0.3
         )
-
+        print("--------------- llm判断直接回答 / 调用API / 询问确认 -----------------")
+        print(response)
+        print("--------------------------------")
         return self._parse_json_response(response)
 
     def _answer_from_knowledge(
         self,
         user_message: str,
         knowledge: List[Dict[str, Any]],
+        history: list = None,
+        context: dict = None,
+        available_tools_text: str = "",
         reason: str = None
     ) -> str:
         """基于知识库内容生成回答"""
+        history = history or []
         knowledge_text = self._format_knowledge_context(knowledge)
+        available_tools_text = available_tools_text or self._get_available_tools_description()
 
         # 使用结构化 prompt 模板
         prompt = build_knowledge_answer_prompt(
             user_message=user_message,
-            knowledge_text=knowledge_text
+            history=history,
+            context=context,
+            knowledge_text=knowledge_text,
+            available_tools_text=available_tools_text
         )
 
         answer = self._call_llm(
@@ -255,12 +300,47 @@ class BusinessHandlerNode(BaseToolNode):
         source_info = f"📚 基于知识库回答（相关度: {knowledge[0].get('score', 0):.2f}）\n\n" if knowledge else ""
         return source_info + answer
 
-    def _call_backend(self, plan: dict) -> dict:
+    def _call_skill(self, skill_name: str, params: dict, token: str = "") -> dict:
+        """
+        调用本地 Skill
+
+        Args:
+            skill_name: Skill 名称
+            params: Skill 参数
+            token: 用户认证 token（会注入到 params 中传给 Skill）
+
+        Returns:
+            dict: Skill 返回数据
+        """
+        try:
+            from config.tool_registry import get_registry
+            registry = get_registry()
+            skill = registry.get(skill_name)
+
+            # 将 token 注入 params（如果 Skill 需要）
+            if token:
+                params["token"] = token
+
+            # 调用 skill 的 _run 方法
+            result = skill._run(**params)
+
+            # Skill 返回的是 Pydantic 模型，转成 dict
+            if hasattr(result, 'model_dump'):
+                return result.model_dump()
+            elif hasattr(result, 'dict'):
+                return result.dict()
+            else:
+                return {"result": str(result)}
+        except Exception as e:
+            return {"error": f"Skill 调用失败: {str(e)}"}
+
+    def _call_backend(self, plan: dict, token: str = "") -> dict:
         """
         调用后端 API
 
         Args:
             plan: API 调用计划
+            token: 用户认证 token
 
         Returns:
             dict: API 返回数据
@@ -274,8 +354,10 @@ class BusinessHandlerNode(BaseToolNode):
 
         url = f"{settings.BACKEND_API_HOST}{settings.BACKEND_API_PREFIX}{endpoint}"
 
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=30.0, headers=headers) as client:
                 if method == "GET":
                     resp = client.get(url, params=params)
                 elif method == "POST":

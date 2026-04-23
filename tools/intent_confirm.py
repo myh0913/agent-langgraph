@@ -62,11 +62,42 @@ class IntentConfirmNode(BaseToolNode):
         history = history or []
         history_text = f"\n\n对话历史（共 {len(history)} 条消息）：\n{self._format_history(history)}" if history else "(无)"
 
+        # 查询知识库
+        try:
+            from knowledge import get_knowledge_manager
+            km = get_knowledge_manager()
+            results = km.search(query=user_message, top_k=3)
+            if results:
+                parts = ["\n【知识库参考内容】"]
+                for i, r in enumerate(results, 1):
+                    parts.append(f"\n--- 知识 {i} ---")
+                    if r.get("title"):
+                        parts.append(f"标题：{r['title']}")
+                    if r.get("category"):
+                        parts.append(f"分类：{r['category']}")
+                    parts.append(f"内容：{r.get('content', '')}")
+                    parts.append(f"相关度：{r.get('score', 0):.2f}")
+                knowledge_text = "".join(parts)
+            else:
+                knowledge_text = "（知识库中未找到相关内容）"
+        except Exception:
+            knowledge_text = "（知识库查询失败）"
+
         # 使用结构化 prompt 模板
+        from config.tool_registry import get_registry
+        registry = get_registry()
+        tools = registry.list_tools_with_status()
+        available_tools_text = "\n".join([
+            f"- {t['name']}: {t.get('description', '无描述')}" + ("（已启用）" if t["enabled"] else "（已禁用）")
+            for t in tools
+        ]) if tools else "（无）"
+
         prompt = build_intent_confirm_prompt(
             user_message=user_message,
             history=history,
-            context=context
+            context=context,
+            knowledge_text=knowledge_text,
+            available_tools_text=available_tools_text
         )
 
         response = self._call_llm(
@@ -75,7 +106,13 @@ class IntentConfirmNode(BaseToolNode):
             temperature=0.7
         )
 
-        return self._parse_response(response)
+        res = self._parse_response(response)
+
+        print("-------------------------------------")
+        print("意图确认:", res)
+        print("-------------------------------------")
+        
+        return res
 
     def _format_history(self, history: list) -> str:
         if not history:
